@@ -1,0 +1,146 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>Delay</title>
+</head>
+<body>
+  <h1>Delay</h1>
+  <label>delay time:
+    <input type="range" id="delay-time" value="0.1" min="0" max="1" step="0.01">
+    <span id="delay-time-val"></span>
+  </label><br>
+  <label>feedback:
+    <input type="range" id="feedback" value="0.5" min="0" max="1" step="0.01">
+    <span id="feedback-val"></span>
+  </label><br>
+  <label>dry:
+    <input type="range" id="dry" value="1.0" min="0" max="1" step="0.01">
+    <span id="dry-val"></span>
+  </label><br>
+  <label>wet:
+    <input type="range" id="wet" value="1.0" min="0" max="1" step="0.01">
+    <span id="wet-val"></span>
+  </label><br>
+  <button id="play">play</button>
+  <div id="visual-wave"></div>
+  <div id="visual-spectrum"></div>
+  <script src="./common/visualizers.js"></script>
+  <script src="./common/noises.js"></script>
+  <script>
+    window.addEventListener('DOMContentLoaded', () => {
+      const context = new AudioContext(),
+            noise = new BlueNoise(context),
+            noiseGain = context.createGain(),
+            delay = context.createDelay(),
+            feedback = context.createGain(),
+            dryGain = context.createGain(),
+            wetGain = context.createGain(),
+            masterGain = context.createGain(),
+            waveVisualizer = new WaveVisualizer(context),
+            spectrumVisualizer = new SpectrumVisualizer(context);;
+
+      const delayTimeElem = document.getElementById('delay-time'),
+            delayTimeValElem = document.getElementById('delay-time-val'),
+            feedbackElem = document.getElementById('feedback'),
+            feedbackValElem = document.getElementById('feedback-val'),
+            dryElem = document.getElementById('dry'),
+            dryValElem = document.getElementById('dry-val'),
+            wetElem = document.getElementById('wet'),
+            wetValElem = document.getElementById('wet-val'),
+            playElem = document.getElementById('play')
+            visualWaveElem = document.getElementById('visual-wave'),
+            visualSpectrumElem = document.getElementById('visual-spectrum');
+
+      delayTimeElem.addEventListener('input', () => {
+        setDelayTime();
+      }, false);
+
+      feedbackElem.addEventListener('input', () => {
+        setFeedback();
+      }, false);
+
+      dryElem.addEventListener('input', () => {
+        setDry();
+      }, false);
+
+      wetElem.addEventListener('input', () => {
+        setWet();
+      }, false);
+
+      playElem.addEventListener('click', () => {
+        play();
+      }, false);
+
+      function setDelayTime() {
+        const v = parseFloat(delayTimeElem.value);
+        delayTimeValElem.textContent = v + 's';
+        if (delay instanceof DelayNode) {
+          delay.delayTime.value = v;
+        }
+      }
+
+      function setFeedback() {
+        const v = parseFloat(feedbackElem.value);
+        feedbackValElem.textContent = v;
+        if (feedback instanceof GainNode) {
+          feedback.gain.value = v;
+        }
+      }
+
+      function setDry() {
+        const v = parseFloat(dryElem.value);
+        dryValElem.textContent = v;
+        if (dryGain instanceof GainNode) {
+          dryGain.gain.value = v;
+        }
+      }
+
+      function setWet() {
+        const v = parseFloat(wetElem.value);
+        wetValElem.textContent = v;
+        if (wetGain instanceof GainNode) {
+          wetGain.gain.value = v;
+        }
+      }
+
+      function play() {
+        const t = context.currentTime,
+              attack = 0.01,
+              release = 0.1;
+        noiseGain.gain.cancelScheduledValues(t);
+        noiseGain.gain.setValueAtTime(0, t);
+        noiseGain.gain.linearRampToValueAtTime(1, t + attack);
+        noiseGain.gain.setTargetAtTime(0, t + attack, release);
+      }
+
+      noiseGain.gain.value = 0;
+
+      noise.connect(noiseGain);
+      noiseGain.connect(dryGain);
+      dryGain.connect(masterGain);
+      noiseGain.connect(delay);
+      delay.connect(feedback);
+      feedback.connect(delay);
+      delay.connect(wetGain);
+      wetGain.connect(masterGain);
+      masterGain.connect(context.destination);
+
+      setDelayTime();
+      setFeedback();
+      setDry();
+      setWet();
+
+      waveVisualizer.setAudioNode(masterGain);
+      spectrumVisualizer.setAudioNode(masterGain);
+      visualWaveElem.appendChild(waveVisualizer.getCanvasElement());
+      visualSpectrumElem.appendChild(spectrumVisualizer.getCanvasElement());
+
+      noise.start();
+      waveVisualizer.start();
+      spectrumVisualizer.start();
+
+    });
+  </script>
+</body>
+</html>

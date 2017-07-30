@@ -1,0 +1,100 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charest="utf-8">
+  <title>panning</title>
+</head>
+<body>
+  <h1>Panning</h1>
+  <label>level:
+    <input type="range" id="level" value="1" min="0" max="1" step="0.01">
+    <span id="level-val"></span>
+  </label><br>
+  <label> pan:
+    L <input type="range" id="pan" value="0" min="-1" max="1" step="0.01"> R
+  </label><br>
+  <button id="button">start / stop</button>
+  <div id="visual-wave"></div>
+  <div id="visual-spectrum"></div>
+  <script src="./common/visualizers.js"></script>
+  <script>
+    window.addEventListener('DOMContentLoaded', () => {
+      const context = new AudioContext(),
+            gain = context.createGain(),
+            pan = context.createStereoPanner(),
+            waveVisualizer = new WaveVisualizer(context),
+            spectrumVisualizer = new SpectrumVisualizer(context);
+
+      let osc = null;
+
+      const levelElem = document.getElementById('level'),
+            levelValElem = document.getElementById('level-val'),
+            panElem = document.getElementById('pan'),
+            buttonElem = document.getElementById('button'),
+            visualWaveElem = document.getElementById('visual-wave'),
+            visualSpectrumElem = document.getElementById('visual-spectrum');
+
+      levelElem.addEventListener('input', () => {
+        setLevel();
+      }, false);
+
+      panElem.addEventListener('input', () => {
+        setPan();
+      }, false);
+
+      buttonElem.addEventListener('click', () => {
+        if (osc === null) {
+          start();
+        } else {
+          stop();
+        }
+      }, false);
+
+      function setLevel() {
+        const v = parseFloat(levelElem.value);
+        levelValElem.textContent = v;
+        if (gain instanceof GainNode) {
+          gain.gain.value = v;
+        }
+      }
+
+      function setPan() {
+        const v  = parseFloat(panElem.value);
+        panElem.textContent = v;
+        if (pan instanceof StereoPannerNode) {
+          pan.pan.value = v;
+        }
+      }
+
+      function start() {
+        osc = context.createOscillator();
+        osc.connect(pan);
+        osc.start();
+      }
+
+      function stop() {
+        if (osc instanceof OscillatorNode) {
+          osc.stop();
+          osc = null;
+        }
+      }
+
+      setLevel();
+      setPan();
+
+      pan.connect(gain);
+      gain.connect(context.destination);
+
+      waveVisualizer.setAudioNode(gain);
+      spectrumVisualizer.setAudioNode(gain);
+      visualWaveElem.appendChild(waveVisualizer.getCanvasElement());
+      visualSpectrumElem.appendChild(spectrumVisualizer.getCanvasElement());
+
+      waveVisualizer.start();
+      spectrumVisualizer.start();
+
+
+    });
+  </script>
+</body>
+</html>

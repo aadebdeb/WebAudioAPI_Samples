@@ -1,0 +1,179 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+</head>
+<body>
+  <h1>Filters</h1>
+  <label>level:
+    <input type="range" id="level" value="1" min="0" max="1" step="0.01">
+    <span id="level-val"></span>
+  </label><br>
+  <label>
+    filter type:
+    <select id="filter-type">
+      <option value="lowpass">lowpass</option>
+      <option value="highpass">highpass</option>
+      <option value="bandpass">bandpass</option>
+      <option value="lowshelf">lowshelf</option>
+      <option value="highshelf">highshelf</option>
+      <option value="peaking">peaking</option>
+      <<option value="notch">notch</option>
+      <<option value="allpass">allpass</option>
+    </select>
+  </label><br>
+  <label>cutoff frequency:
+    <input type="range" id="cutoff-freq" value="440" min="0" max="20000" step="1">
+    <span id="cutoff-freq-val"></span>
+  </label><br>
+  <label>cutoff detune:
+    <input type="range" id="cutoff-detune" value="0" min="-100" max="100" step="1">
+    <span id="cutoff-detune-val"></span>
+  </label><br>
+  <label>Q:
+    <input type="range" id="filter-q" value="1" min="0" max="100" step="0.01">
+    <span id="filter-q-val"></span>
+  </label><br>
+  <label>filter gain:
+    <input type="range" id="filter-gain" value="0" min="-100" max="100" step="0.01">
+    <span id="filter-gain-val"></span>
+  </label><br>
+  <button id="button">start / stop</button>
+  <div id="visual-wave"></div>
+  <div id="visual-spectrum"></div>
+  <script src="./common/noises.js"></script>
+  <script src="./common/visualizers.js"></script>
+  <script>
+    window.addEventListener('DOMContentLoaded', () => {
+      const context = new AudioContext(),
+            gain =  context.createGain(),
+            filter = context.createBiquadFilter(),
+            waveVisualizer = new WaveVisualizer(context);
+            spectrumVisualizer = new SpectrumVisualizer(context);
+
+      let noise = null;
+
+      const levelElem = document.getElementById('level'),
+            levelValElem = document.getElementById('level-val'),
+            filterTypeElem = document.getElementById('filter-type'),
+            cutoffFreqElem = document.getElementById('cutoff-freq'),
+            cutoffFreqValElem = document.getElementById('cutoff-freq-val'),
+            cutoffDetuneElem = document.getElementById('cutoff-detune'),
+            cutoffDetuneValElem = document.getElementById('cutoff-detune-val'),
+            filterQElem = document.getElementById('filter-q'),
+            filterQValElem = document.getElementById('filter-q-val'),
+            filterGainElem = document.getElementById('filter-gain'),
+            filterGainValElem = document.getElementById('filter-gain-val'),
+            buttonElem = document.getElementById('button'),
+            visualWaveElem = document.getElementById('visual-wave'),
+            visualSpectrumElem = document.getElementById('visual-spectrum');
+
+      filterTypeElem.addEventListener('change', () => {
+        setFilterType();
+      }, false);
+
+      levelElem.addEventListener('input', () => {
+        setLevel();
+      }, false);
+
+      cutoffFreqElem.addEventListener('input', () => {
+        setCutoffFrequency();
+      }, false);
+
+      cutoffDetuneElem.addEventListener('input', () => {
+        setCutoffDetune();
+      }, false);
+
+      filterQElem.addEventListener('input', () => {
+        setFilterQ();
+      }, false);
+
+      filterGainElem.addEventListener('input', () => {
+        setFilterGain();
+      });
+
+      buttonElem.addEventListener('click', () => {
+        if (noise === null) {
+          start();
+        } else {
+          stop();
+        }
+      }, false);
+
+      function setLevel() {
+        const v = parseFloat(levelElem.value);
+        levelValElem.textContent = v;
+        if (gain instanceof GainNode) {
+          gain.gain.value = v;
+        }
+      }
+
+      function setFilterType() {
+        if (filter instanceof BiquadFilterNode) {
+          filter.type = filterTypeElem.value;
+        }
+      }
+
+      function setCutoffFrequency() {
+        const v = parseFloat(cutoffFreqElem.value);
+        cutoffFreqValElem.textContent = v + 'Hz';
+        if (filter instanceof BiquadFilterNode) {
+          filter.frequency.value = v;
+        }
+      }
+
+      function setCutoffDetune() {
+        const v = parseFloat(cutoffDetuneElem.value);
+        cutoffDetuneValElem.textContent = v + 'cent'
+        if (filter instanceof BiquadFilterNode) {
+          filter.detune.value = v;
+        }
+      }
+
+      function setFilterQ() {
+        const v = parseFloat(filterQElem.value);
+        filterQValElem.textContent = v;
+        if (filter instanceof BiquadFilterNode) {
+          filter.Q.value = v;
+        }
+      }
+
+      function setFilterGain() {
+        const v = parseFloat(filterGainElem.value);
+        filterGainValElem.textContent = v+ 'dB';
+        if (filter instanceof BiquadFilterNode) {
+          filter.gain.value = v;
+        }
+       }
+
+       function start() {
+         noise = new WhiteNoise(context);
+         noise.connect(filter);
+         noise.start();
+       }
+
+       function stop() {
+         noise.stop();
+         noise = null;
+       }
+
+       setLevel();
+       setCutoffFrequency();
+       setCutoffDetune();
+       setFilterQ();
+       setFilterGain();
+
+       filter.connect(gain);
+       gain.connect(context.destination);
+
+       waveVisualizer.setAudioNode(gain);
+       spectrumVisualizer.setAudioNode(gain);
+       visualWaveElem.appendChild(waveVisualizer.getCanvasElement());
+       visualSpectrumElem.appendChild(spectrumVisualizer.getCanvasElement());
+
+       waveVisualizer.start();
+       spectrumVisualizer.start();
+    });
+  </script>
+</body>
+</html>

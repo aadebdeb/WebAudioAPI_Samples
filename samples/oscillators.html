@@ -1,0 +1,143 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>oscillators</title>
+</head>
+<body>
+  <h1>Oscillators</h1>
+  <label>
+    type:
+    <select id="type">
+      <option value="sine">sine</option>
+      <option value="square">square</option>
+      <option value="sawtooth">sawtooth</option>
+      <option value="triangle">triangle</option>
+    </select>
+  </label><br>
+  <label>level:
+    <input type="range" id="level" value="1" min="0" max="1" step="0.01">
+    <span id="level-val"></span>
+  </label><br>
+  <label>frequency:
+    <input type="range" id="frequency" value="440" min="110" max="2200" step="1.0">
+    <span id="freq-val"></span>
+  </label><br>
+  <label>detune:
+    <input type="range" id="detune" value="0" min="-100" max="100" step="1.0">
+    <span id="detune-val"></span>
+  </label><br>
+  <button id="button">Start / Stop</button>
+  <div id="visual-wave"></div>
+  <div id="visual-spectrum"></div>
+  <script src="./common/visualizers.js"></script>
+  <script>
+
+    window.addEventListener('DOMContentLoaded', () => {
+
+      const context = new AudioContext(),
+            gain = context.createGain(),
+            waveVisualizer = new WaveVisualizer(context),
+            spectrumVisualizer = new SpectrumVisualizer(context);
+
+      let osc = null;
+
+      const typeElem = document.getElementById('type'),
+            levelElem = document.getElementById('level'),
+            levelValElem = document.getElementById('level-val'),
+            freqElem = document.getElementById('frequency'),
+            freqValElem = document.getElementById('freq-val'),
+            detuneElem = document.getElementById('detune'),
+            detuneValElem = document.getElementById('detune-val'),
+            buttonElem = document.getElementById('button'),
+            visualWaveElem = document.getElementById('visual-wave'),
+            visualSpectrumElem = document.getElementById('visual-spectrum');
+
+      typeElem.addEventListener('change', () => {
+        setType();
+      }, false);
+
+      levelElem.addEventListener('input', () => {
+        setLevel();
+      }, false);
+
+      freqElem.addEventListener('input', () => {
+        setFrequency();
+      }, false);
+
+      detuneElem.addEventListener('input', () => {
+        setDetune();
+      }, false);
+
+      buttonElem.addEventListener('click', () => {
+        if (osc === null) {
+          start();
+        } else {
+          stop();
+        }
+      }, false);
+
+      function setType() {
+        if (osc instanceof OscillatorNode) {
+          osc.type = typeElem.value;
+        }
+      }
+
+      function setLevel() {
+        const v = parseFloat(levelElem.value);
+        levelValElem.textContent  = v;
+        if (gain instanceof GainNode) {
+          gain.gain.value = v;
+        }
+      }
+
+      function setFrequency() {
+        const v = parseFloat(freqElem.value);
+        freqValElem.textContent = v + 'Hz';
+        if (osc instanceof OscillatorNode) {
+          osc.frequency.value = v;
+        }
+      }
+
+      function setDetune() {
+        const v = parseFloat(detuneElem.value);
+        detuneValElem.textContent = v + 'cent';
+        if (osc instanceof OscillatorNode) {
+          osc.detune.value = v;
+        }
+      }
+
+      function start() {
+        osc = context.createOscillator();
+        setType();
+        setLevel();
+        setFrequency();
+        setDetune();
+        osc.connect(gain);
+        osc.start();
+      }
+
+      function stop() {
+        osc.stop();
+        osc = null;
+      }
+
+      setLevel();
+      setFrequency();
+      setDetune();
+
+      gain.connect(context.destination);
+
+      waveVisualizer.setAudioNode(gain);
+      spectrumVisualizer.setAudioNode(gain);
+      visualWaveElem.appendChild(waveVisualizer.getCanvasElement());
+      visualSpectrumElem.appendChild(spectrumVisualizer.getCanvasElement());
+
+      waveVisualizer.start();
+      spectrumVisualizer.start();
+    });
+
+  </script>
+
+</body>
+</html>

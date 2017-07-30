@@ -1,0 +1,156 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>ADSR</title>
+</head>
+<body>
+  <h1>ADSR</h1>
+  <label>level:
+    <input type="range" id="level" value="1" min="0" max="1" step="0.01">
+    <span id="level-val"></span>
+  </label><br>
+  <label>attack:
+    <input type="range" id="attack" value="0.3" min="0.0" max="3.0" step="0.01">
+    <span id="attack-val"></span>
+  </label><br>
+  <label>decay:
+    <input type="range" id="decay" value="0.3" min="0.0" max="3.0" step="0.01">
+    <span id="decay-val"></span>
+  </label><br>
+  <label>sustain:
+    <input type="range" id="sustain" value="0.5" min="0" max="1" step="0.01">
+    <span id="sustain-val"></span>
+  </label><br>
+  <label>release:
+    <input type="range" id="release" value="0.3" min="0.0" max="3.0" step="0.01">
+    <span id="release-val"></span>
+  </label><br>
+  <button id="play">play</button>
+  <div id="visual-wave"></div>
+  <div id="visual-spectrum"></div>
+  <script src="./common/visualizers.js"></script>
+  <script>
+    window.addEventListener('DOMContentLoaded', () => {
+      const context = new AudioContext(),
+            osc = context.createOscillator(),
+            adsr = context.createGain(),
+            gain = context.createGain(),
+            waveVisualizer = new WaveVisualizer(context),
+            spectrumVisualizer = new SpectrumVisualizer(context);
+
+      const levelElem = document.getElementById('level'),
+            levelValElem = document.getElementById('level-val'),
+            attackElem = document.getElementById('attack'),
+            attackValElem = document.getElementById('attack-val'),
+            decayElem = document.getElementById('decay'),
+            decayValElem = document.getElementById('decay-val'),
+            sustainElem = document.getElementById('sustain'),
+            sustainValElem = document.getElementById('sustain-val'),
+            releaseElem = document.getElementById('release'),
+            releaseValElem = document.getElementById('release-val'),
+            playElem = document.getElementById('play'),
+            visualWaveElem = document.getElementById('visual-wave'),
+            visualSpectrumElem = document.getElementById('visual-spectrum');
+
+      levelElem.addEventListener('input', () => {
+        setLevel();
+      }, false);
+
+      attackElem.addEventListener('input', () => {
+        setAttack();
+      }, false);
+
+      decayElem.addEventListener('input', () => {
+        setDecay();
+      }, false);
+
+      sustainElem.addEventListener('input', () => {
+        setSustain();
+      }, false);
+
+      releaseElem.addEventListener('input', () => {
+        setRelease();
+      }, false);
+
+      playElem.addEventListener('mousedown', () => {
+        play();
+      }, false);
+
+      playElem.addEventListener('mouseup', () => {
+        stop();
+      }, false);
+
+      function setLevel() {
+        const v = parseFloat(levelElem.value);
+        levelValElem.textContent = v;
+        if (gain instanceof GainNode) {
+          gain.gain.value = v;
+        }
+      }
+
+      function setAttack() {
+        const v = parseFloat(attackElem.value);
+        attackValElem.textContent = v + 's';
+      }
+
+      function setDecay() {
+        const v = parseFloat(decayElem.value);
+        decayValElem.textContent = v + 's';
+      }
+
+      function setSustain() {
+        const v = parseFloat(sustainElem.value);
+        sustainValElem.textContent = v;
+      }
+
+      function setRelease() {
+        const v = parseFloat(releaseElem.value);
+        releaseValElem.textContent = v + 's';
+      }
+
+      function play() {
+        const time = context.currentTime,
+              attackVal = parseFloat(attackElem.value),
+              decayVal = parseFloat(decayElem.value),
+              sustainVal = parseFloat(sustainElem.value);
+        adsr.gain.cancelScheduledValues(time);
+        adsr.gain.setValueAtTime(0, time);
+        adsr.gain.linearRampToValueAtTime(1, time + attackVal);
+        adsr.gain.linearRampToValueAtTime(sustainVal, time + attackVal + decayVal);
+      }
+
+      function stop() {
+        const time = context.currentTime,
+              releaseVal = parseFloat(releaseElem.value);
+        adsr.gain.cancelScheduledValues(time);
+        adsr.gain.setValueAtTime(adsr.gain.value, time);
+        adsr.gain.linearRampToValueAtTime(0, time + releaseVal);
+      }
+
+      osc.type = 'square';
+      adsr.gain.value = 0;
+
+      setLevel();
+      setAttack();
+      setDecay();
+      setSustain();
+      setRelease();
+
+      osc.connect(adsr);
+      adsr.connect(gain);
+      gain.connect(context.destination);
+
+      waveVisualizer.setAudioNode(gain);
+      spectrumVisualizer.setAudioNode(gain);
+      visualWaveElem.appendChild(waveVisualizer.getCanvasElement());
+      visualSpectrumElem.appendChild(spectrumVisualizer.getCanvasElement());
+
+      osc.start();
+      waveVisualizer.start();
+      spectrumVisualizer.start();
+
+    });
+  </script>
+</body>
+</html>

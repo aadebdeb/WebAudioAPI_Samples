@@ -1,0 +1,221 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>Amplitude Modulation / Ring Modulation</title>
+</head>
+<body>
+  <h1>Amplitude Modulation / Ring Modulation</h1>
+  <label>level:
+    <input type="range" id="level" value="1" min="0" max="1" step="0.01">
+    <span id="level-val"></span>
+  </label><br>
+  <label>carrier frequency:
+    <input type="range" id="carrier-freq" value="440" min="110" max="2200" step="1">
+    <span id="carrier-freq-val"></span>
+  </label><br>
+  <label>carrier type:
+    <select id="carrier-type">
+      <option value="sine">sine</option>
+      <option value="square">square</option>
+      <option value="sawtooth">sawtooth</option>
+      <option value="triangle">triangle</option>
+    </select>
+  </label><br>
+  <label>mod frequency:
+    <input type="range" id="mod-freq" value="20" min="0" max="100" step="1">
+    <span id="mod-freq-val"></span>
+  </label><br>
+  <label>mod type:
+    <select id="mod-type">
+      <option value="sine">sine</option>
+      <option value="square">square</option>
+      <option value="sawtooth">sawtooth</option>
+      <option value="triangle">triangle</option>
+    </select>
+  </label><br>
+  <label>mod depth:
+    <input type="range" id="mod-depth" value="0.5" min="0" max="1" step="0.01">
+    <span id="mod-depth-val"></span>
+  </label><br>
+  <span>method:
+    <label><input type="radio" name="mod-method" value="am" checked>AM</label>
+    <label><input type="radio" name="mod-method" value="rm">RM</label>
+  </span>
+  <br>
+  <button id="button">start / stop</button>
+  <div id="visual-wave"></div>
+  <div id="visual-spectrum"></div>
+  <script src="./common/visualizers.js"></script>
+  <script>
+    window.addEventListener('DOMContentLoaded', () => {
+      const context = new AudioContext(),
+            mod = context.createOscillator(),
+            carrierGain = context.createGain(),
+            modGain = context.createGain(),
+            masterGain = context.createGain(),
+            waveVisualizer = new WaveVisualizer(context),
+            spectrumVisualizer = new SpectrumVisualizer(context);
+
+      let carrier = null,
+          modMethod = 'am';
+
+      const levelElem = document.getElementById('level'),
+            levelValElem = document.getElementById('level-val'),
+            carrierFreqElem = document.getElementById('carrier-freq'),
+            carrierFreqValElem = document.getElementById('carrier-freq-val'),
+            carrierTypeElem = document.getElementById('carrier-type'),
+            modFreqElem = document.getElementById('mod-freq'),
+            modFreqValElem = document.getElementById('mod-freq-val'),
+            modTypeElem = document.getElementById('mod-type'),
+            modDepthElem = document.getElementById('mod-depth'),
+            modDepthValElem = document.getElementById('mod-depth-val'),
+            modMethodElems = document.getElementsByName('mod-method'),
+            buttonElem = document.getElementById('button'),
+            visualWaveElem = document.getElementById('visual-wave'),
+            visualSpectrumElem = document.getElementById('visual-spectrum');
+
+      levelElem.addEventListener('input', (e) => {
+        setLevel();
+      }, false);
+
+      carrierFreqElem.addEventListener('input', (e) => {
+        setCarrierFreq();
+      }, false);
+
+      carrierTypeElem.addEventListener('change', (e) => {
+        setCarrierType();
+      }, false);
+
+      modFreqElem.addEventListener('input', (e) => {
+        setModFreq();
+      }, false);
+
+      modTypeElem.addEventListener('change', (e) => {
+        setModType();
+      }, false);
+
+      modDepthElem.addEventListener('input', (e) => {
+        setModDepth();
+      }, false);
+
+      Array.prototype.forEach.call(modMethodElems, (modMethodElem) => {
+        modMethodElem.addEventListener('change', (e) => {
+          setModMethod();
+        });
+      });
+
+      buttonElem.addEventListener('click', (e) => {
+        if (carrier === null) {
+          start();
+        } else {
+          stop();
+        }
+      });
+
+      function setLevel() {
+        const v = parseFloat(levelElem.value);
+        levelValElem.textContent = v;
+        if (masterGain instanceof GainNode) {
+          masterGain.gain.value = v;
+        }
+      }
+
+      function setCarrierFreq() {
+        const v = parseFloat(carrierFreqElem.value);
+        carrierFreqValElem.textContent = v + 'Hz';
+        if (carrier instanceof OscillatorNode) {
+          carrier.frequency.value = v;
+        }
+      }
+
+      function setCarrierType() {
+        if (carrier instanceof OscillatorNode) {
+          carrier.type = carrierTypeElem.value;
+        }
+      }
+
+      function setModFreq() {
+        const v = parseFloat(modFreqElem.value);
+        modFreqValElem.textContent = v + 'Hz';
+        if (mod instanceof OscillatorNode) {
+          mod.frequency.value = modFreqElem.value;
+        }
+      }
+
+      function setModType() {
+        if (mod instanceof OscillatorNode) {
+          mod.type = modTypeElem.value;
+        }
+      }
+
+      function setModDepth() {
+        const v = parseFloat(modDepthElem.value);
+        modDepthValElem.textContent = v;
+        if (modGain instanceof GainNode) {
+          if (modMethod === 'am') {
+            modGain.gain.value = v;
+          } else if (modMethod === 'rm') {
+            modGain.gain.value = 1.0;
+          }
+        }
+      }
+
+      function setModMethod() {
+        const elem = Array.prototype.find.call(modMethodElems, (modMethodElem) => {
+          return modMethodElem.checked;
+        });
+        if (elem.value !== modMethod) {
+          modMethod = elem.value;
+          setModDepth();
+          setCarrierGain();
+        }
+      }
+
+      function setCarrierGain() {
+        if (modMethod === 'am') {
+          carrierGain.gain.value = 1.0;
+        } else if (modMethod === 'rm') {
+          carrierGain.gain.value = 0.0;
+        }
+      }
+
+      function start() {
+        carrier = context.createOscillator();
+        setCarrierFreq();
+        setCarrierType();
+        setCarrierGain();
+        carrier.connect(carrierGain);
+        modGain.connect(carrierGain.gain);
+        carrierGain.connect(masterGain);
+        masterGain.connect(context.destination);
+        carrier.start();
+      }
+
+      function stop() {
+        if (carrier instanceof OscillatorNode) {
+          carrier.stop();
+          carrier = null;
+        }
+      }
+
+      setLevel();
+      setCarrierFreq();
+      setModFreq();
+      setModDepth();
+
+      mod.connect(modGain);
+
+      waveVisualizer.setAudioNode(masterGain);
+      spectrumVisualizer.setAudioNode(masterGain);
+      visualWaveElem.appendChild(waveVisualizer.getCanvasElement());
+      visualSpectrumElem.appendChild(spectrumVisualizer.getCanvasElement());
+
+      mod.start();
+      waveVisualizer.start();
+      spectrumVisualizer.start();
+
+    });
+  </script>
+</body>
+</html>
